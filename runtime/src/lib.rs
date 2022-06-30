@@ -43,6 +43,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
+pub use pallet_proof_of_existence;
 /// Import the template pallet.
 pub use pallet_template;
 
@@ -301,6 +302,11 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+impl pallet_proof_of_existence::Config for Runtime {
+	type Event = Event;
+	type MaxBytesInHash = frame_support::traits::ConstU32<64>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -319,6 +325,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
 		Nicks: pallet_nicks,
+		ProofOfExistence: pallet_proof_of_existence,
 	}
 );
 
