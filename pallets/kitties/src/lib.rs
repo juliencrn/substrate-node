@@ -79,7 +79,16 @@ pub mod pallet {
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// Nonce has overflowed past u64 limits
+		NonceOverflow,
+		/// Overflow adding a new kitty to total supply
+		KittiesOverflow,
+		/// Kitty_id already exists
+		KittyIdAlreadyExists,
+		/// Max Kitties per account reached
+		MaxKittyOwned,
+	}
 
 	// Nonce storage item.
 	#[pallet::storage]
@@ -156,7 +165,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		fn increment_nonce() -> DispatchResult {
 			<Nonce<T>>::try_mutate(|nonce| {
-				let next = nonce.checked_add(1).ok_or("Overflow")?; // TODO Part III: Add error handling
+				let next = nonce.checked_add(1).ok_or(Error::<T>::NonceOverflow)?;
 				*nonce = next;
 
 				Ok(())
@@ -175,17 +184,16 @@ pub mod pallet {
 			kitty_id: T::Hash,
 			new_kitty: Kitty<T::Hash, T::Balance>,
 		) -> DispatchResult {
-			ensure!(!<Kitties<T>>::contains_key(kitty_id), "Kitty id already exists");
+			ensure!(!<Kitties<T>>::contains_key(kitty_id), Error::<T>::KittyIdAlreadyExists);
 
 			// Update total Kitty counts.
 			let all_kitties_count = <KittiesCount<T>>::get();
-			let new_all_kitties_count = all_kitties_count
-				.checked_add(1)
-				.ok_or("Overflow adding a new kitty to total supply")?;
+			let new_all_kitties_count =
+				all_kitties_count.checked_add(1).ok_or(Error::<T>::KittiesOverflow)?;
 
 			// Performs this operation first because as it may fail
 			<KittiesByOwner<T>>::try_mutate(&to, |kitty_vec| kitty_vec.try_push(kitty_id))
-				.expect("MaxKittyOwned reached");
+				.map_err(|_| <Error<T>>::MaxKittyOwned)?;
 
 			// Update storage with new Kitty.
 			<Kitties<T>>::insert(kitty_id, new_kitty);
